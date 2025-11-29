@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Chụp ảnh + Lấy vị trí</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; }
+        video, canvas { width: 100%; border: 1px solid #ccc; border-radius: 8px; margin-top: 10px; }
+        button { padding: 10px 16px; margin-top: 10px; cursor: pointer; }
+        #status { margin-top: 10px; font-size: 14px; }
+        #preview { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h2>Chụp ảnh realtime & lấy vị trí</h2>
+
+    <!-- Hiển thị camera -->
+    <video id="video" autoplay playsinline></video>
+    <button id="captureBtn">📸 Chụp ảnh & Lấy vị trí</button>
+
+    <!-- Ảnh sau khi chụp -->
+    <canvas id="canvas" style="display:none;"></canvas>
+    <img id="preview" alt="Ảnh đã chụp" />
+
+    <div id="status"></div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const preview = document.getElementById('preview');
+        const statusDiv = document.getElementById('status');
+        const captureBtn = document.getElementById('captureBtn');
+
+        // 1. Mở camera
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                statusDiv.textContent = "Camera đang hoạt động.";
+            } catch (err) {
+                console.error(err);
+                statusDiv.textContent = "Không mở được camera: " + err.message;
+            }
+        }
+
+        startCamera();
+
+        // 2. Hàm chụp ảnh + lấy vị trí
+        captureBtn.addEventListener('click', () => {
+            // Chụp ảnh từ video
+            const width = video.videoWidth;
+            const height = video.videoHeight;
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, width, height);
+
+            // Chuyển ảnh thành base64
+            const imageData = canvas.toDataURL('image/png');
+            preview.src = imageData;
+
+            statusDiv.textContent = "Đang lấy vị trí...";
+
+            // Lấy vị trí GPS
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lon = pos.coords.longitude;
+                        statusDiv.textContent = `Vị trí: ${lat}, ${lon}`;
+
+                        console.log("Ảnh (base64): ", imageData);
+                        console.log("Lat:", lat, "Lon:", lon);
+
+                        // Gửi lên server (ví dụ)
+                        // fetch('/api/upload', {
+                        //     method: 'POST',
+                        //     headers: { 'Content-Type': 'application/json' },
+                        //     body: JSON.stringify({
+                        //         image: imageData,
+                        //         latitude: lat,
+                        //         longitude: lon
+                        //     })
+                        // }).then(res => res.json())
+                        //   .then(data => console.log(data));
+                    },
+                    (err) => {
+                        statusDiv.textContent = "Không lấy được vị trí: " + err.message;
+                    }
+                );
+            } else {
+                statusDiv.textContent = "Trình duyệt không hỗ trợ geolocation.";
+            }
+        });
+    </script>
+</body>
+</html>
